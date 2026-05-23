@@ -5,8 +5,8 @@ import { useCartStore } from '@/store/cartStore'
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
-  const { getCount, toggleCart } = useCartStore()
-  const count = getCount()
+  const { count, toggleCart } = useCartStore()
+  const itemCount = count()
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 40)
@@ -94,14 +94,14 @@ export default function Navbar() {
           alignItems: 'center', gap: 8,
         }}>
           BAG
-          {count > 0 && (
+          {itemCount > 0 && (
             <span style={{
               width: 18, height: 18, borderRadius: '50%',
               background: '#4A9063', color: '#fff',
               fontSize: 9, display: 'flex',
               alignItems: 'center', justifyContent: 'center',
               fontWeight: 400,
-            }}>{count}</span>
+            }}>{itemCount}</span>
           )}
         </button>
       </nav>

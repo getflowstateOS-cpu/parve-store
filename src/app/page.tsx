@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties, HTMLAttributes } from 'react'
 import { getAllProducts } from '@/lib/shopify'
-import type { ShopifyProductNode } from '@/lib/shopify'
+import type { ShopifyProduct } from '@/lib/shopify'
 import { useCartStore } from '@/store/cartStore'
 
 const NICHES = ['All','Corporate Luxe','Coastal Grandmother','Minimalist Bride','Resort Luxury']
@@ -255,20 +255,34 @@ function HeroCanvas() {
 
 function ProductCard({ product, shopifyProduct }: {
   product: typeof DEMO_PRODUCTS[0],
-  shopifyProduct?: ShopifyProductNode
+  shopifyProduct?: ShopifyProduct
 }) {
   const [hovered,setHovered]=useState(false)
   const [adding,setAdding]=useState(false)
-  const { addItem } = useCartStore()
+  const { addItemWithShopify } = useCartStore()
   const sp = shopifyProduct
 
   const handleAdd = async () => {
     setAdding(true)
-    const variantId = sp?.variants?.edges?.[0]?.node?.id || product.variantId
-    const price = sp?.priceRange?.minVariantPrice?.amount || product.price
-    const image = sp?.images?.edges?.[0]?.node?.url || product.image
-    const title = sp?.title || product.title
-    await addItem(variantId, title, price, image)
+    const variant = sp?.variants?.edges?.[0]?.node
+    const variantId = variant?.id ?? product.variantId
+    const price = parseFloat(
+      variant?.price?.amount ??
+        sp?.priceRange?.minVariantPrice?.amount ??
+        product.price
+    )
+    const imageUrl = sp?.images?.edges?.[0]?.node?.url || product.image || undefined
+    const productTitle = sp?.title || product.title
+    const variantTitle = variant?.title ?? 'Default'
+
+    await addItemWithShopify({
+      variantId,
+      productTitle,
+      variantTitle,
+      price,
+      quantity: 1,
+      imageUrl,
+    })
     setAdding(false)
   }
 
@@ -360,7 +374,7 @@ function ProductCard({ product, shopifyProduct }: {
           fontFamily:'Jost,sans-serif',fontSize:9,
           letterSpacing:'0.32em',textTransform:'uppercase',
           color:'#4A9063',marginBottom:8,
-        }}>{(sp?.collections?.edges?.[0]?.node?.title) || product.niche}</p>
+        }}>{product.niche}</p>
         <h3 style={{
           fontFamily:'Cormorant Garamond,serif',
           fontSize:21,fontWeight:300,color:'#0F1A14',
@@ -389,7 +403,7 @@ function ProductCard({ product, shopifyProduct }: {
 
 export default function Home() {
   const [activeNiche,setActiveNiche]=useState('All')
-  const [shopifyProducts,setShopifyProducts]=useState<ShopifyProductNode[]>([])
+  const [shopifyProducts,setShopifyProducts]=useState<ShopifyProduct[]>([])
   const [scrollY,setScrollY]=useState(0)
   const [visible,setVisible]=useState<Set<string>>(new Set())
 

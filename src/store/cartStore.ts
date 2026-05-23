@@ -1,94 +1,121 @@
+"use client";
+
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { createCart, addToCart } from "@/lib/shopify";
+import { addToCart, createCart } from "@/lib/shopify";
 
 export interface CartItem {
-  id: string;
   variantId: string;
-  title: string;
-  price: string;
-  image: string;
+  productTitle: string;
+  variantTitle: string;
+  price: number;
   quantity: number;
+  imageUrl?: string;
 }
 
-interface CartState {
+interface CartStore {
+  items: CartItem[];
   cartId: string | null;
   checkoutUrl: string | null;
-  items: CartItem[];
   isOpen: boolean;
-  total: number;
+  addItem: (item: CartItem) => void;
+  addItemWithShopify: (item: CartItem) => Promise<void>;
+  removeItem: (variantId: string) => void;
+  updateQty: (variantId: string, qty: number) => void;
   toggleCart: () => void;
   openCart: () => void;
-  addItem: (
-    variantId: string,
-    title: string,
-    price: string,
-    image: string
-  ) => Promise<void>;
-  removeItem: (id: string) => void;
-  getCount: () => number;
+  closeCart: () => void;
+  setCartId: (id: string) => void;
+  setCheckoutUrl: (url: string) => void;
+  total: () => number;
+  count: () => number;
 }
 
-export const useCartStore = create<CartState>()(
+export const useCartStore = create<CartStore>()(
   persist(
     (set, get) => ({
+      items: [],
       cartId: null,
       checkoutUrl: null,
-      items: [],
       isOpen: false,
-      total: 0,
-      toggleCart: () => set((s) => ({ isOpen: !s.isOpen })),
-      openCart: () => set({ isOpen: true }),
-      getCount: () => get().items.reduce((s, i) => s + i.quantity, 0),
-      addItem: async (variantId, title, price, image) => {
-        let { cartId } = get();
-        if (!cartId) {
-          const cart = await createCart();
-          if (!cart) return;
-          cartId = cart.id;
-          set({ cartId, checkoutUrl: cart.checkoutUrl });
-        }
-        try {
-          const cart = await addToCart(cartId!, variantId, 1);
-          if (cart) set({ checkoutUrl: cart.checkoutUrl });
-        } catch {
-          /* demo variants may fail Shopify API — keep local cart */
-        }
-        set((s) => {
-          const existing = s.items.find((i) => i.variantId === variantId);
-          const items = existing
-            ? s.items.map((i) =>
-                i.variantId === variantId
-                  ? { ...i, quantity: i.quantity + 1 }
+
+      addItem: (item) =>
+        set((state) => {
+          const existing = state.items.find(
+            (i) => i.variantId === item.variantId
+          );
+          if (existing) {
+            return {
+              items: state.items.map((i) =>
+                i.variantId === item.variantId
+                  ? { ...i, quantity: i.quantity + item.quantity }
                   : i
-              )
-            : [
-                ...s.items,
-                {
-                  id: Date.now().toString(),
-                  variantId,
-                  title,
-                  price,
-                  image,
-                  quantity: 1,
-                },
-              ];
-          const total = items.reduce(
-            (sum, i) => sum + parseFloat(i.price) * i.quantity,
-            0
-          );
-          return { items, total, isOpen: true };
-        });
-      },
-      removeItem: (id) =>
-        set((s) => {
-          const items = s.items.filter((i) => i.id !== id);
-          const total = items.reduce(
-            (sum, i) => sum + parseFloat(i.price) * i.quantity,
-            0
-          );
-          return { items, total };
+              ),
+            };
+          }
+          return { items: [...state.items, item] };
         }),
+
+      addItemWithShopify: async (item) => {
+        const isShopifyVariant = item.variantId.startsWith("gid://shopify");
+
+        get().addItem(item);
+
+        if (!isShopifyVariant) {
+          set({ isOpen: true });
+          return;
+        }
+
+        try {
+          let { cartId } = get();
+
+          if (!cartId) {
+            const cart = await createCart(item.variantId, item.quantity);
+            if (cart) {
+              set({
+                cartId: cart.id,
+                checkoutUrl: cart.checkoutUrl,
+                isOpen: true,
+              });
+            }
+            return;
+          }
+
+          const cart = await addToCart(cartId, item.variantId, item.quantity);
+          if (cart) {
+            set({ checkoutUrl: cart.checkoutUrl, isOpen: true });
+          }
+        } catch (error) {
+          console.error("Shopify cart sync failed:", error);
+          set({ isOpen: true });
+        }
+      },
+
+      removeItem: (variantId) =>
+        set((state) => ({
+          items: state.items.filter((i) => i.variantId !== variantId),
+        })),
+
+      updateQty: (variantId, qty) =>
+        set((state) => ({
+          items:
+            qty <= 0
+              ? state.items.filter((i) => i.variantId !== variantId)
+              : state.items.map((i) =>
+                  i.variantId === variantId ? { ...i, quantity: qty } : i
+                ),
+        })),
+
+      toggleCart: () => set((state) => ({ isOpen: !state.isOpen })),
+      openCart: () => set({ isOpen: true }),
+      closeCart: () => set({ isOpen: false }),
+      setCartId: (id) => set({ cartId: id }),
+      setCheckoutUrl: (url) => set({ checkoutUrl: url }),
+
+      total: () =>
+        get().items.reduce((s, i) => s + i.price * i.quantity, 0),
+
+      count: () => get().items.reduce((s, i) => s + i.quantity, 0),
     }),
     { name: "parve-cart" }
   )
