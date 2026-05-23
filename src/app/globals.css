@@ -1,0 +1,54 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@300;400;500&display=swap');
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --green-50:  #F2F7F4;
+  --green-100: #E0EDE5;
+  --green-200: #C2DBCb;
+  --green-300: #96C4A4;
+  --green-400: #6AAB80;
+  --green-500: #4A9063;
+  --green-600: #357A4E;
+  --green-700: #276040;
+  --green-800: #1C4A30;
+  --green-900: #122E1E;
+  --white:     #FFFFFF;
+  --off-white: #FAFCFB;
+  --cream:     #F5F9F6;
+  --gold:      #A8906A;
+  --dark:      #0F1A14;
+  --gray:      #5A6B60;
+  --light-gray:#E8EFEB;
+}
+
+html { scroll-behavior: smooth; font-size: 16px; }
+
+body {
+  background: var(--off-white);
+  color: var(--dark);
+  font-family: 'Jost', sans-serif;
+  font-weight: 300;
+  cursor: none;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+*, *:hover { cursor: none !important; }
+
+::selection {
+  background: var(--green-300);
+  color: var(--white);
+}
+
+::-webkit-scrollbar { width: 2px; }
+::-webkit-scrollbar-track { background: var(--cream); }
+::-webkit-scrollbar-thumb { background: var(--green-400); border-radius: 2px; }
+
+a { color: inherit; text-decoration: none; }
+button { cursor: none !important; }
+
+@media (max-width: 768px) {
+  body { cursor: auto; }
+  *, *:hover { cursor: auto !important; }
+}

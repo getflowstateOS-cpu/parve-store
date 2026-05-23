@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PARVÉ — Luxury Custom Cursor Demo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Playfair+Display:ital@0;1&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --parve-gold: #c9a96e;
+        --parve-ivory: #faf9f6;
+        --parve-black: #0a0a0a;
+        --parve-ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        cursor: none;
+        background: var(--parve-ivory);
+        color: var(--parve-black);
+        font-family: "Inter", system-ui, sans-serif;
+        min-height: 100vh;
+      }
+
+      @media (max-width: 768px) {
+        html,
+        body,
+        * {
+          cursor: auto !important;
+        }
+      }
+
+      /* ── Cursor styles (mirrors src/styles/parve-cursor.css) ── */
+      .parve-cursor {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 99999;
+      }
+      .parve-cursor.is-hidden {
+        opacity: 0;
+      }
+      .parve-cursor__dot {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 8px;
+        height: 8px;
+        margin-left: -4px;
+        margin-top: -4px;
+        border-radius: 50%;
+        background: var(--parve-gold);
+        will-change: transform, opacity;
+        transform: translate3d(-100px, -100px, 0);
+        transition: opacity 0.4s var(--parve-ease), transform 0.15s var(--parve-ease);
+        z-index: 4;
+      }
+      .parve-cursor.is-hover .parve-cursor__dot,
+      .parve-cursor.is-explore .parve-cursor__dot,
+      .parve-cursor.is-text .parve-cursor__dot {
+        opacity: 0;
+      }
+      .parve-cursor.is-clicking .parve-cursor__dot {
+        transform: translate3d(var(--cx, -100px), var(--cy, -100px), 0) scale(0.6);
+      }
+      .parve-cursor__ring-wrap {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 40px;
+        height: 40px;
+        margin-left: -20px;
+        margin-top: -20px;
+        will-change: transform;
+        transform: translate3d(-100px, -100px, 0);
+        z-index: 3;
+        transition: width 0.4s var(--parve-ease), height 0.4s var(--parve-ease), margin 0.4s var(--parve-ease);
+      }
+      .parve-cursor.is-hover .parve-cursor__ring-wrap,
+      .parve-cursor.is-explore .parve-cursor__ring-wrap {
+        width: 70px;
+        height: 70px;
+        margin-left: -35px;
+        margin-top: -35px;
+      }
+      .parve-cursor.is-clicking .parve-cursor__ring-wrap {
+        transform: translate3d(var(--rx, -100px), var(--ry, -100px), 0) scale(0.6);
+      }
+      .parve-cursor__ring {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        border: 1px solid var(--parve-gold);
+        opacity: 0.3;
+        transition: opacity 0.4s var(--parve-ease), background 0.4s var(--parve-ease);
+      }
+      .parve-cursor.is-hover .parve-cursor__ring {
+        opacity: 1;
+        background: rgba(201, 169, 110, 0.15);
+      }
+      .parve-cursor.is-explore .parve-cursor__ring {
+        opacity: 1;
+        background: rgba(201, 169, 110, 0.12);
+      }
+      .parve-cursor__ring-orbit {
+        position: absolute;
+        inset: -6px;
+        border-radius: 50%;
+        border: 1px solid transparent;
+        border-top-color: var(--parve-gold);
+        border-right-color: rgba(201, 169, 110, 0.35);
+        opacity: 0;
+        animation: parve-orbit 3s linear infinite;
+      }
+      .parve-cursor.is-explore .parve-cursor__ring-orbit {
+        opacity: 1;
+      }
+      @keyframes parve-orbit {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .parve-cursor__pulse {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 6px;
+        height: 6px;
+        margin: -3px 0 0 -3px;
+        border-radius: 50%;
+        background: var(--parve-gold);
+        opacity: 0;
+      }
+      .parve-cursor.is-explore .parve-cursor__pulse {
+        opacity: 1;
+        animation: parve-pulse 2s ease-in-out infinite;
+      }
+      @keyframes parve-pulse {
+        0%,
+        100% {
+          transform: scale(0.85);
+          opacity: 0.7;
+        }
+        50% {
+          transform: scale(1.15);
+          opacity: 1;
+        }
+      }
+      .parve-cursor__label {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 9px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--parve-gold);
+        opacity: 0;
+        transition: opacity 0.4s var(--parve-ease);
+      }
+      .parve-cursor.is-hover .parve-cursor__label,
+      .parve-cursor.is-explore .parve-cursor__label {
+        opacity: 1;
+      }
+      .parve-cursor__blend {
+        position: fixed;
+        width: 70px;
+        height: 70px;
+        margin-left: -35px;
+        margin-top: -35px;
+        border-radius: 50%;
+        background: var(--parve-ivory);
+        mix-blend-mode: difference;
+        opacity: 0;
+        will-change: transform, opacity;
+        transform: translate3d(-100px, -100px, 0);
+        z-index: 2;
+        transition: opacity 0.4s var(--parve-ease);
+      }
+      .parve-cursor.is-hover .parve-cursor__blend {
+        opacity: 0.35;
+      }
+      .parve-cursor__text-line {
+        position: fixed;
+        width: 2px;
+        height: 24px;
+        margin-left: -1px;
+        margin-top: -12px;
+        background: var(--parve-gold);
+        box-shadow: 0 0 12px rgba(201, 169, 110, 0.55);
+        opacity: 0;
+        will-change: transform, opacity;
+        transform: translate3d(-100px, -100px, 0);
+        z-index: 5;
+        transition: opacity 0.35s var(--parve-ease);
+      }
+      .parve-cursor.is-text .parve-cursor__text-line {
+        opacity: 1;
+      }
+      .parve-cursor.is-text .parve-cursor__ring-wrap {
+        opacity: 0;
+      }
+      .parve-cursor__trail {
+        position: fixed;
+        width: 3px;
+        height: 3px;
+        margin-left: -1.5px;
+        margin-top: -1.5px;
+        border-radius: 50%;
+        background: var(--parve-gold);
+        pointer-events: none;
+        animation: parve-trail-fade 0.5s var(--parve-ease) forwards;
+      }
+      @keyframes parve-trail-fade {
+        0% {
+          opacity: var(--trail-opacity, 0.6);
+          transform: translate3d(var(--tx, 0), var(--ty, 0), 0) scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: translate3d(var(--tx, 0), var(--ty, 0), 0) scale(0.2);
+        }
+      }
+      .parve-cursor__ripple {
+        position: fixed;
+        width: 40px;
+        height: 40px;
+        margin-left: -20px;
+        margin-top: -20px;
+        border-radius: 50%;
+        border: 1px solid var(--parve-gold);
+        animation: parve-ripple 0.6s var(--parve-ease) forwards;
+      }
+      @keyframes parve-ripple {
+        0% {
+          opacity: 0.7;
+          transform: translate3d(var(--rx, 0), var(--ry, 0), 0) scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: translate3d(var(--rx, 0), var(--ry, 0), 0) scale(2.4);
+        }
+      }
+      [data-cursor-magnetic] {
+        transition: transform 0.35s var(--parve-ease);
+        will-change: transform;
+      }
+
+      /* Demo layout */
+      .hero {
+        min-height: 70vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 4rem 2rem;
+      }
+      .hero h1 {
+        font-family: "Playfair Display", Georgia, serif;
+        font-size: clamp(2.5rem, 8vw, 5rem);
+        font-weight: 400;
+        letter-spacing: 0.08em;
+      }
+      .hero p {
+        max-width: 32rem;
+        margin-top: 1.5rem;
+        line-height: 1.8;
+        color: #6b6b6b;
+        font-size: 0.95rem;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 2rem;
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 2rem;
+      }
+      .card {
+        aspect-ratio: 3/4;
+        background: linear-gradient(145deg, #f5f0e8, #e8ddd0);
+        position: relative;
+        display: flex;
+        align-items: flex-end;
+        padding: 1.5rem;
+      }
+      .card span {
+        font-family: "Playfair Display", serif;
+        font-size: 1.25rem;
+      }
+      .cta-row {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin-top: 2.5rem;
+        flex-wrap: wrap;
+      }
+      .btn {
+        padding: 1rem 2rem;
+        border: 1px solid var(--parve-black);
+        background: transparent;
+        font-size: 10px;
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+        text-decoration: none;
+        color: inherit;
+      }
+      .btn-gold {
+        background: var(--parve-black);
+        color: var(--parve-ivory);
+        border-color: var(--parve-black);
+      }
+      a.link {
+        color: var(--parve-gold);
+        text-decoration: none;
+        letter-spacing: 0.15em;
+        font-size: 11px;
+        text-transform: uppercase;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="hero">
+      <p style="font-size: 10px; letter-spacing: 0.45em; text-transform: uppercase; color: var(--parve-gold)">
+        Cursor Demo
+      </p>
+      <h1>PARVÉ</h1>
+      <p data-cursor-text>
+        Hover this paragraph for the text cursor — a thin gold line with a soft glow.
+        Move to links, products, and magnetic CTAs to feel each distinct state.
+      </p>
+      <div class="cta-row">
+        <a href="#" class="btn btn-gold" data-cursor-magnetic>Shop Collection</a>
+        <a href="#" class="btn" data-cursor-hover>Our Story</a>
+      </div>
+      <p style="margin-top: 2rem">
+        <a href="#" class="link">Discover the edit</a>
+      </p>
+    </section>
+
+    <div class="grid">
+      <article class="card" data-cursor-explore><span>Silk Midi</span></article>
+      <article class="card" data-cursor-explore><span>Linen Column</span></article>
+      <article class="card" data-cursor-explore><span>Satin Gown</span></article>
+    </div>
+
+    <script>
+      /* Inline engine — mirrors src/lib/parveCursorEngine.ts */
+      (function () {
+        if (window.matchMedia("(max-width: 768px)").matches) return;
+
+        const LERP = 0.08;
+        const MAGNETIC_RADIUS = 80;
+        const TRAIL_MAX = 8;
+        const TRAIL_MIN_DIST = 14;
+        const EXPLORE_SELECTOR = "[data-cursor-explore]";
+        const MAGNETIC_SELECTOR = "[data-cursor-magnetic]";
+        const HOVER_SELECTOR =
+          'a, button, [data-cursor-hover], input, textarea, select, label';
+        const TEXT_SELECTOR = "p, h1, h2, h3, h4, h5, h6, blockquote, [data-cursor-text]";
+
+        const root = document.createElement("div");
+        root.className = "parve-cursor is-hidden";
+        root.innerHTML = `
+          <div class="parve-cursor__ripples"></div>
+          <div class="parve-cursor__trails"></div>
+          <div class="parve-cursor__blend"></div>
+          <div class="parve-cursor__ring-wrap">
+            <div class="parve-cursor__ring-orbit"></div>
+            <div class="parve-cursor__ring"></div>
+            <div class="parve-cursor__pulse"></div>
+            <span class="parve-cursor__label">VIEW</span>
+          </div>
+          <div class="parve-cursor__dot"></div>
+          <div class="parve-cursor__text-line"></div>
+        `;
+        document.body.appendChild(root);
+
+        const dot = root.querySelector(".parve-cursor__dot");
+        const ringWrap = root.querySelector(".parve-cursor__ring-wrap");
+        const blend = root.querySelector(".parve-cursor__blend");
+        const textLine = root.querySelector(".parve-cursor__text-line");
+        const label = root.querySelector(".parve-cursor__label");
+        const trails = root.querySelector(".parve-cursor__trails");
+        const ripples = root.querySelector(".parve-cursor__ripples");
+
+        let mouseX = -100,
+          mouseY = -100;
+        let dotX = -100,
+          dotY = -100;
+        let ringX = -100,
+          ringY = -100;
+        let blendX = -100,
+          blendY = -100;
+        let textX = -100,
+          textY = -100;
+        let lastTrailX = -100,
+          lastTrailY = -100;
+        let trailCount = 0;
+        let visible = false;
+        let mode = "default";
+
+        const lerp = (a, b, t) => a + (b - a) * t;
+        const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
+
+        function setMode(next) {
+          if (mode === next) return;
+          mode = next;
+          root.classList.remove("is-hover", "is-text", "is-explore");
+          if (next === "hover") root.classList.add("is-hover");
+          if (next === "text") root.classList.add("is-text");
+          if (next === "explore") root.classList.add("is-explore");
+        }
+
+        function resolveMode(target) {
+          if (!target) return "default";
+          if (target.closest(EXPLORE_SELECTOR)) return "explore";
+          if (target.closest(MAGNETIC_SELECTOR)) return "hover";
+          if (target.closest(TEXT_SELECTOR) && !target.closest(HOVER_SELECTOR))
+            return "text";
+          if (target.closest(HOVER_SELECTOR)) return "hover";
+          return "default";
+        }
+
+        function spawnTrail(x, y) {
+          if (mode === "text") return;
+          const dist = Math.hypot(x - lastTrailX, y - lastTrailY);
+          if (dist < TRAIL_MIN_DIST) return;
+          lastTrailX = x;
+          lastTrailY = y;
+          const el = document.createElement("div");
+          el.className = "parve-cursor__trail";
+          const opacity = 0.6 - (trailCount % TRAIL_MAX) * (0.6 / TRAIL_MAX);
+          el.style.setProperty("--tx", x + "px");
+          el.style.setProperty("--ty", y + "px");
+          el.style.setProperty("--trail-opacity", String(opacity));
+          el.style.transform = "translate3d(" + x + "px," + y + "px,0)";
+          trails.appendChild(el);
+          trailCount++;
+          while (trails.children.length > TRAIL_MAX) trails.firstChild.remove();
+          setTimeout(() => el.remove(), 520);
+        }
+
+        function spawnRipple(x, y) {
+          const el = document.createElement("div");
+          el.className = "parve-cursor__ripple";
+          el.style.setProperty("--rx", x + "px");
+          el.style.setProperty("--ry", y + "px");
+          el.style.transform = "translate3d(" + x + "px," + y + "px,0)";
+          ripples.appendChild(el);
+          setTimeout(() => el.remove(), 650);
+        }
+
+        function applyMagnetic(mx, my) {
+          let tx = mx,
+            ty = my;
+          document.querySelectorAll(MAGNETIC_SELECTOR).forEach((btn) => {
+            const rect = btn.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            const dist = Math.hypot(mx - cx, my - cy);
+            if (dist < MAGNETIC_RADIUS) {
+              const pull = 1 - dist / MAGNETIC_RADIUS;
+              tx = lerp(tx, cx, pull * 0.22);
+              ty = lerp(ty, cy, pull * 0.22);
+              const shiftX = clamp(-(mx - cx) * 0.06, -4, 4);
+              const shiftY = clamp(-(my - cy) * 0.06, -4, 4);
+              btn.style.transform =
+                "translate3d(" + shiftX + "px," + shiftY + "px,0)";
+            } else btn.style.transform = "";
+          });
+          return { x: tx, y: ty };
+        }
+
+        function tick() {
+          const { x: targetX, y: targetY } = applyMagnetic(mouseX, mouseY);
+          dotX = lerp(dotX, targetX, LERP);
+          dotY = lerp(dotY, targetY, LERP);
+          ringX = lerp(ringX, targetX, LERP);
+          ringY = lerp(ringY, targetY, LERP);
+          blendX = lerp(blendX, targetX, LERP);
+          blendY = lerp(blendY, targetY, LERP);
+          textX = lerp(textX, targetX, LERP * 1.2);
+          textY = lerp(textY, targetY, LERP * 1.2);
+
+          dot.style.transform = "translate3d(" + dotX + "px," + dotY + "px,0)";
+          ringWrap.style.transform =
+            "translate3d(" + ringX + "px," + ringY + "px,0)";
+          blend.style.transform =
+            "translate3d(" + blendX + "px," + blendY + "px,0)";
+          textLine.style.transform =
+            "translate3d(" + textX + "px," + textY + "px,0)";
+          root.style.setProperty("--cx", dotX + "px");
+          root.style.setProperty("--cy", dotY + "px");
+          root.style.setProperty("--rx", ringX + "px");
+          root.style.setProperty("--ry", ringY + "px");
+
+          if (visible && mode !== "text") spawnTrail(dotX, dotY);
+          requestAnimationFrame(tick);
+        }
+
+        document.addEventListener("mousemove", (e) => {
+          mouseX = e.clientX;
+          mouseY = e.clientY;
+          if (!visible) {
+            visible = true;
+            root.classList.remove("is-hidden");
+          }
+          const target = document.elementFromPoint(e.clientX, e.clientY);
+          const next = resolveMode(target);
+          setMode(next);
+          if (next === "explore") label.textContent = "EXPLORE";
+          else if (next === "hover")
+            label.textContent = target.closest("button") ? "+" : "VIEW";
+        });
+
+        document.addEventListener("mouseleave", () => {
+          visible = false;
+          root.classList.add("is-hidden");
+          setMode("default");
+        });
+
+        document.addEventListener("mousedown", (e) => {
+          root.classList.add("is-clicking");
+          spawnRipple(e.clientX, e.clientY);
+          setTimeout(() => root.classList.remove("is-clicking"), 400);
+        });
+
+        requestAnimationFrame(tick);
+      })();
+    </script>
+  </body>
+</html>
