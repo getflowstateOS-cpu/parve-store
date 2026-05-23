@@ -3,10 +3,15 @@ import { createStorefrontApiClient } from "@shopify/storefront-api-client";
 const storeDomain =
   process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN ?? "parve-7.myshopify.com";
 const apiVersion =
-  process.env.NEXT_PUBLIC_SHOPIFY_API_VERSION ?? "2025-01";
+  process.env.NEXT_PUBLIC_SHOPIFY_API_VERSION ?? "2025-10";
 const publicAccessToken =
-  process.env.NEXT_PUBLIC_SHOPIFY_STOREFRONT_TOKEN ??
-  "b4d48e18e3f03174e104efad206d042e";
+  process.env.NEXT_PUBLIC_SHOPIFY_STOREFRONT_TOKEN ?? "";
+
+if (!publicAccessToken) {
+  console.warn(
+    "[Shopify] Missing NEXT_PUBLIC_SHOPIFY_STOREFRONT_TOKEN — products will not load."
+  );
+}
 
 export const shopifyClient = createStorefrontApiClient({
   storeDomain,
@@ -42,8 +47,20 @@ export interface ShopifyProduct {
   variants: { edges: { node: ShopifyVariant }[] };
 }
 
+export interface ShopifyFetchResult {
+  products: ShopifyProduct[];
+  connected: boolean;
+  shopName?: string;
+  error?: string;
+  apiVersion: string;
+}
+
 interface ProductsQueryData {
   products: { edges: { node: ShopifyProduct }[] };
+}
+
+interface ShopQueryData {
+  shop: { name: string };
 }
 
 interface ProductQueryData {
@@ -122,6 +139,14 @@ const PRODUCTS_QUERY = `
           }
         }
       }
+    }
+  }
+`;
+
+const SHOP_QUERY = `
+  query GetShop {
+    shop {
+      name
     }
   }
 `;
@@ -231,20 +256,91 @@ const CART_LINES_ADD_MUTATION = `
   }
 `;
 
-export async function getAllProducts(): Promise<ShopifyProduct[]> {
-  const { data, errors } = await shopifyClient.request<ProductsQueryData>(
-    PRODUCTS_QUERY
-  );
+function formatClientErrors(errors: unknown): string {
+  if (!errors) return "Unknown Shopify error";
+  if (typeof errors === "string") return errors;
+  if (Array.isArray(errors)) {
+    return errors
+      .map((e) =>
+        typeof e === "object" && e !== null && "message" in e
+          ? String((e as { message: string }).message)
+          : JSON.stringify(e)
+      )
+      .join("; ");
+  }
+  if (typeof errors === "object" && errors !== null) {
+    if ("message" in errors) return String((errors as { message: string }).message);
+    if ("graphQLErrors" in errors) {
+      return formatClientErrors((errors as { graphQLErrors: unknown }).graphQLErrors);
+    }
+  }
+  return JSON.stringify(errors);
+}
 
-  if (errors) {
-    const message =
-      typeof errors === "object" && errors !== null && "message" in errors
-        ? String((errors as { message: string }).message)
-        : JSON.stringify(errors);
-    throw new Error(message);
+/** Full status for debugging — connection vs empty catalog */
+export async function fetchShopifyCatalog(): Promise<ShopifyFetchResult> {
+  if (!publicAccessToken) {
+    return {
+      products: [],
+      connected: false,
+      error: "Missing NEXT_PUBLIC_SHOPIFY_STOREFRONT_TOKEN",
+      apiVersion,
+    };
   }
 
-  return data?.products?.edges?.map((e) => e.node) ?? [];
+  try {
+    const shopRes = await shopifyClient.request<ShopQueryData>(SHOP_QUERY);
+    const shopErrors = shopRes.errors;
+    if (shopErrors) {
+      return {
+        products: [],
+        connected: false,
+        error: formatClientErrors(shopErrors),
+        apiVersion,
+      };
+    }
+
+    const shopName = shopRes.data?.shop?.name;
+
+    const productsRes = await shopifyClient.request<ProductsQueryData>(
+      PRODUCTS_QUERY
+    );
+
+    if (productsRes.errors) {
+      return {
+        products: [],
+        connected: false,
+        shopName,
+        error: formatClientErrors(productsRes.errors),
+        apiVersion,
+      };
+    }
+
+    const products =
+      productsRes.data?.products?.edges?.map((e) => e.node) ?? [];
+
+    return {
+      products,
+      connected: true,
+      shopName,
+      apiVersion,
+    };
+  } catch (error) {
+    return {
+      products: [],
+      connected: false,
+      error: error instanceof Error ? error.message : "Shopify request failed",
+      apiVersion,
+    };
+  }
+}
+
+export async function getAllProducts(): Promise<ShopifyProduct[]> {
+  const result = await fetchShopifyCatalog();
+  if (result.error && !result.connected) {
+    throw new Error(result.error);
+  }
+  return result.products;
 }
 
 export async function getProductByHandle(
@@ -256,17 +352,12 @@ export async function getProductByHandle(
   );
 
   if (errors) {
-    const message =
-      typeof errors === "object" && errors !== null && "message" in errors
-        ? String((errors as { message: string }).message)
-        : JSON.stringify(errors);
-    throw new Error(message);
+    throw new Error(formatClientErrors(errors));
   }
 
   return data?.product ?? null;
 }
 
-/** @deprecated Use getProductByHandle */
 export const getProduct = getProductByHandle;
 
 export async function createCart(
@@ -283,7 +374,7 @@ export async function createCart(
   );
 
   if (errors) {
-    throw new Error(JSON.stringify(errors));
+    throw new Error(formatClientErrors(errors));
   }
 
   return data?.cartCreate?.cart ?? null;
@@ -305,7 +396,7 @@ export async function addToCart(
   );
 
   if (errors) {
-    throw new Error(JSON.stringify(errors));
+    throw new Error(formatClientErrors(errors));
   }
 
   return data?.cartLinesAdd?.cart ?? null;

@@ -356,11 +356,27 @@ function ProductCard({ product }: { product: DisplayProduct }) {
   )
 }
 
+type ShopifyNotice =
+  | { type: 'empty'; message: string }
+  | { type: 'error'; message: string }
+  | null
+
 interface HomePageClientProps {
   products: DisplayProduct[]
+  shopifyNotice?: ShopifyNotice
+  shopifyMeta?: {
+    connected: boolean
+    productCount: number
+    shopName?: string
+    apiVersion: string
+  }
 }
 
-export default function HomePageClient({ products }: HomePageClientProps) {
+export default function HomePageClient({
+  products,
+  shopifyNotice,
+  shopifyMeta,
+}: HomePageClientProps) {
   const [activeNiche,setActiveNiche]=useState('All')
   const [scrollY,setScrollY]=useState(0)
   const [visible,setVisible]=useState<Set<string>>(new Set())
@@ -567,6 +583,33 @@ export default function HomePageClient({ products }: HomePageClientProps) {
         padding:'64px 28px',
         maxWidth:1340,margin:'0 auto',
       }}>
+        {shopifyNotice && (
+          <div style={{
+            marginBottom:32,padding:'16px 20px',
+            background: shopifyNotice.type === 'error' ? '#FFF5F5' : '#F2F7F4',
+            border:'1px solid',
+            borderColor: shopifyNotice.type === 'error' ? '#E8B4B4' : 'rgba(74,144,99,0.35)',
+            textAlign:'center',
+          }}>
+            <p style={{
+              fontFamily:'Jost,sans-serif',fontSize:11,
+              letterSpacing:'0.12em',lineHeight:1.7,
+              color: shopifyNotice.type === 'error' ? '#8B3030' : '#357A4E',
+            }}>
+              {shopifyNotice.message}
+            </p>
+            {shopifyMeta && (
+              <p style={{
+                fontFamily:'Jost,sans-serif',fontSize:9,
+                letterSpacing:'0.15em',marginTop:8,
+                color:'#5A6B60',textTransform:'uppercase',
+              }}>
+                {shopifyMeta.shopName ? `${shopifyMeta.shopName} · ` : ''}
+                API {shopifyMeta.apiVersion} · {shopifyMeta.productCount} Shopify product(s)
+              </p>
+            )}
+          </div>
+        )}
         <div {...anim('pgrid-title')} style={{
           ...anim('pgrid-title').style,
           textAlign:'center',marginBottom:52,
