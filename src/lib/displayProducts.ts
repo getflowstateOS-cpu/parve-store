@@ -23,6 +23,36 @@ export type DisplayProduct = {
   desc: string;
 };
 
+const BADGE_MAP: Record<string, string> = {
+  bestseller: "Bestseller",
+  limited: "Limited",
+  "editor pick": "Editor's Pick",
+  "editors pick": "Editor's Pick",
+  "editor's pick": "Editor's Pick",
+  "new arrival": "New Arrival",
+  new: "New Arrival",
+};
+
+export function resolveProductBadge(tag: string): string {
+  const key = tag.toLowerCase().trim();
+  if (BADGE_MAP[key]) return BADGE_MAP[key];
+  for (const [k, v] of Object.entries(BADGE_MAP)) {
+    if (key.includes(k)) return v;
+  }
+  const labels = ["Bestseller", "Limited", "Editor's Pick", "New Arrival"];
+  if (labels.includes(tag)) return tag;
+  return tag || "New Arrival";
+}
+
+export function getReviewCount(productId: string): number {
+  let hash = 0;
+  for (let i = 0; i < productId.length; i++) {
+    hash = (hash << 5) - hash + productId.charCodeAt(i);
+    hash |= 0;
+  }
+  return 89 + (Math.abs(hash) % 212);
+}
+
 export const DEMO_PRODUCTS: DisplayProduct[] = [
   {
     id: "d1",
@@ -124,7 +154,7 @@ export function mapShopifyToDisplay(
       p.tags.find((t) =>
         FABRICS.includes(t as (typeof FABRICS)[number])
       ) ?? "silk",
-    tag: p.tags[0] ?? "New",
+    tag: resolveProductBadge(p.tags[0] ?? "New Arrival"),
     imageUrl: p.images?.edges?.[0]?.node?.url ?? null,
     variantId: p.variants?.edges?.[0]?.node?.id ?? null,
     colors: ["#F5F0E8", "#E8DDD0", "#C8B8A0"],

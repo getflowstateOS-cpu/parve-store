@@ -2,128 +2,10 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties, HTMLAttributes } from 'react'
 import type { DisplayProduct } from '@/lib/displayProducts'
-import { useCartStore } from '@/store/cartStore'
+import PremiumProductCard from '@/components/PremiumProductCard'
+import MobileProductStickyBar from '@/components/MobileProductStickyBar'
 
 const NICHES = ['All','Corporate Luxe','Coastal Grandmother','Minimalist Bride','Resort Luxury']
-
-function FabricCanvas({ fabric, colors, speed = 1 }: {
-  fabric: string, colors: string[], speed?: number
-}) {
-  const ref = useRef<HTMLCanvasElement>(null)
-  const spRef = useRef(speed)
-  useEffect(() => { spRef.current = speed }, [speed])
-
-  useEffect(() => {
-    const canvas = ref.current; if (!canvas) return
-    const ctx = canvas.getContext('2d')!
-    let frame = 0, raf: number
-
-    const p: Record<string,{amp:number,speed:number,shimmer:boolean,flutter:boolean}> = {
-      silk:      { amp:7,  speed:1.0, shimmer:true,  flutter:false },
-      linen:     { amp:11, speed:0.8, shimmer:false, flutter:false },
-      satin:     { amp:5,  speed:0.6, shimmer:true,  flutter:false },
-      chiffon:   { amp:15, speed:1.4, shimmer:false, flutter:true  },
-      structured:{ amp:2,  speed:0.3, shimmer:false, flutter:false },
-    }
-    const fp = p[fabric] || p.silk
-    const [c0,c1,c2] = colors
-
-    const draw = () => {
-      frame++
-      const t = frame * 0.018 * fp.speed * spRef.current
-      const W = canvas.width, H = canvas.height
-      ctx.clearRect(0,0,W,H)
-
-      // BG
-      ctx.fillStyle = c0
-      ctx.fillRect(0,0,W,H)
-
-      const cx=W*.5, cy=H*.12
-      const bH=H*.28, sH=H*.43
-      const tw=W*.2, sw=W*.4
-
-      const w1=Math.sin(t)*fp.amp
-      const w2=Math.sin(t+1.3)*fp.amp*.75
-      const w3=Math.sin(t+2.6)*fp.amp*.5
-      const w4=Math.sin(t+3.9)*fp.amp*.6
-
-      // Dress gradient
-      const g = ctx.createLinearGradient(cx-sw,0,cx+sw,0)
-      g.addColorStop(0,c2); g.addColorStop(0.3,c1)
-      g.addColorStop(0.65,c0); g.addColorStop(1,c2)
-      ctx.fillStyle=g
-
-      ctx.beginPath()
-      ctx.moveTo(cx-tw,cy)
-      ctx.bezierCurveTo(cx-tw*1.15,cy+bH*.35, cx-sw*.75+w1,cy+bH*.7, cx-sw+w2,cy+bH)
-      ctx.bezierCurveTo(cx-sw*1.15+w3,cy+bH+sH*.35, cx-sw*.85+w4,cy+bH+sH*.7, cx-sw*.55+w1,cy+bH+sH)
-      ctx.quadraticCurveTo(cx,cy+bH+sH+w2*.25, cx+sw*.55+w3,cy+bH+sH)
-      ctx.bezierCurveTo(cx+sw*.85+w2,cy+bH+sH*.7, cx+sw*1.15+w1,cy+bH+sH*.35, cx+sw+w4,cy+bH)
-      ctx.bezierCurveTo(cx+sw*.75+w3,cy+bH*.7, cx+tw*1.15,cy+bH*.35, cx+tw,cy)
-      ctx.closePath(); ctx.fill()
-
-      // Shadow
-      const sh=ctx.createLinearGradient(cx-sw,0,cx-sw*.15,0)
-      sh.addColorStop(0,'rgba(0,0,0,0.14)'); sh.addColorStop(1,'rgba(0,0,0,0)')
-      ctx.fillStyle=sh; ctx.fill()
-
-      // Shimmer
-      if (fp.shimmer) {
-        const sl=ctx.createLinearGradient(cx-tw,cy,cx+tw,cy+bH+sH)
-        const al=0.07+Math.sin(t*.5)*.055
-        sl.addColorStop(0,'rgba(255,255,255,0)')
-        sl.addColorStop(.45+Math.sin(t*.3)*.08,`rgba(255,255,255,${al})`)
-        sl.addColorStop(1,'rgba(255,255,255,0)')
-        ctx.fillStyle=sl; ctx.fill()
-      }
-
-      // Flutter for chiffon
-      if (fp.flutter) {
-        ctx.globalAlpha = .18+Math.sin(t*1.8)*.12
-        ctx.fillStyle = c1
-        ctx.beginPath()
-        ctx.moveTo(cx-sw*.6+w1,cy+bH+sH*.6)
-        ctx.quadraticCurveTo(cx,cy+bH+sH+w3*1.5, cx+sw*.6+w2,cy+bH+sH*.6)
-        ctx.fill()
-        ctx.globalAlpha=1
-      }
-
-      // Waist seam
-      ctx.strokeStyle=`rgba(${fabric==='structured'?'255,255,255':'120,100,80'},0.2)`
-      ctx.lineWidth=.8
-      ctx.beginPath()
-      ctx.moveTo(cx-tw*.88,cy+bH*.64)
-      ctx.quadraticCurveTo(cx,cy+bH*.58+Math.sin(t*.9)*2, cx+tw*.88,cy+bH*.64)
-      ctx.stroke()
-
-      // Neckline
-      const ng=ctx.createRadialGradient(cx,cy-7,0,cx,cy-7,tw*.88)
-      ng.addColorStop(0,c1); ng.addColorStop(1,c2)
-      ctx.fillStyle=ng
-      ctx.beginPath()
-      ctx.ellipse(cx,cy-7,tw*.74,tw*.2,0,0,Math.PI*2)
-      ctx.fill()
-
-      // Particles
-      for(let i=0;i<8;i++){
-        const px=cx+Math.sin(t*.4+i*.9)*W*.38
-        const py=cy+Math.cos(t*.3+i*1.3)*H*.32+H*.28
-        const op=.12+Math.sin(t*.6+i)*.1
-        ctx.fillStyle=`rgba(74,144,99,${op})`
-        ctx.beginPath()
-        ctx.arc(px,py,1+Math.sin(t+i)*.6,0,Math.PI*2)
-        ctx.fill()
-      }
-
-      raf=requestAnimationFrame(draw)
-    }
-    draw()
-    return ()=>cancelAnimationFrame(raf)
-  },[fabric,colors])
-
-  return <canvas ref={ref} width={300} height={400}
-    style={{width:'100%',height:'100%',display:'block'}} />
-}
 
 function HeroCanvas() {
   const ref = useRef<HTMLCanvasElement>(null)
@@ -219,142 +101,6 @@ function HeroCanvas() {
   return <canvas ref={ref} style={{width:'100%',height:'100%',display:'block'}}/>
 }
 
-function ProductCard({ product }: { product: DisplayProduct }) {
-  const [hovered,setHovered]=useState(false)
-  const [adding,setAdding]=useState(false)
-  const { addItemWithShopify } = useCartStore()
-
-  const handleAdd = async () => {
-    if (!product.variantId) return
-    setAdding(true)
-    await addItemWithShopify({
-      variantId: product.variantId,
-      productTitle: product.name,
-      variantTitle: 'Default',
-      price: product.price,
-      quantity: 1,
-      imageUrl: product.imageUrl ?? undefined,
-    })
-    setAdding(false)
-  }
-
-  return (
-    <div
-      onMouseEnter={()=>setHovered(true)}
-      onMouseLeave={()=>setHovered(false)}
-      style={{
-        background:'#fff',
-        transition:'transform 0.55s cubic-bezier(0.25,0.46,0.45,0.94), box-shadow 0.55s',
-        transform: hovered ? 'translateY(-14px)' : 'translateY(0)',
-        boxShadow: hovered
-          ? '0 40px 80px rgba(15,26,20,0.1)'
-          : '0 2px 24px rgba(15,26,20,0.04)',
-      }}>
-
-      {/* Image/Canvas area */}
-      <div style={{
-        aspectRatio:'3/4', position:'relative',
-        overflow:'hidden', background:product.colors[0],
-      }} data-cursor="view">
-
-        {product.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={product.imageUrl}
-            alt={product.name}
-            style={{
-              width:'100%',height:'100%',
-              objectFit:'cover',
-              transition:'transform 0.6s ease',
-              transform: hovered ? 'scale(1.06)' : 'scale(1)',
-            }}
-          />
-        ) : (
-          <FabricCanvas
-            fabric={product.fabric}
-            colors={product.colors}
-            speed={hovered ? 2 : 1}
-          />
-        )}
-
-        {/* Hover overlay */}
-        <div style={{
-          position:'absolute',inset:0,
-          background:'rgba(15,26,20,0.48)',
-          display:'flex',flexDirection:'column',
-          alignItems:'center',justifyContent:'flex-end',
-          padding:18,
-          opacity: hovered ? 1 : 0,
-          transition:'opacity 0.38s',
-        }}>
-          <p style={{
-            fontFamily:'Cormorant Garamond,serif',
-            fontSize:13,color:'rgba(250,252,251,0.82)',
-            letterSpacing:'0.05em',textAlign:'center',
-            marginBottom:16,lineHeight:1.6,
-          }}>{product.desc}</p>
-          <div style={{display:'flex',gap:8,width:'100%'}}>
-            <button onClick={handleAdd} disabled={adding} style={{
-              flex:1,padding:'12px 0',
-              background: adding ? '#357A4E' : '#FAFCFB',
-              color: adding ? '#fff' : '#0F1A14',
-              border:'none',fontFamily:'Jost,sans-serif',
-              fontSize:9,letterSpacing:'0.28em',
-              textTransform:'uppercase',transition:'all 0.3s',
-            }}>
-              {adding ? 'Adding...' : 'Add to Bag'}
-            </button>
-            <button style={{
-              padding:'12px 16px',background:'transparent',
-              color:'#FAFCFB',border:'1px solid rgba(250,252,251,0.5)',
-              fontFamily:'Jost,sans-serif',fontSize:9,
-              letterSpacing:'0.1em',transition:'all 0.3s',
-            }}>360°</button>
-          </div>
-        </div>
-
-        {/* Tag */}
-        <div style={{
-          position:'absolute',top:14,left:14,
-          background:'rgba(74,144,99,0.9)',color:'#fff',
-          fontFamily:'Jost,sans-serif',fontSize:8,
-          letterSpacing:'0.25em',textTransform:'uppercase',
-          padding:'4px 12px',
-        }}>{product.tag}</div>
-      </div>
-
-      {/* Info */}
-      <div style={{padding:'20px 18px 22px'}}>
-        <p style={{
-          fontFamily:'Jost,sans-serif',fontSize:9,
-          letterSpacing:'0.32em',textTransform:'uppercase',
-          color:'#4A9063',marginBottom:8,
-        }}>{product.niche}</p>
-        <h3 style={{
-          fontFamily:'Cormorant Garamond,serif',
-          fontSize:21,fontWeight:300,color:'#0F1A14',
-          marginBottom:12,lineHeight:1.2,
-        }}>{product.name}</h3>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-          <span style={{
-            fontFamily:'Jost,sans-serif',fontSize:14,
-            color:'#5A6B60',letterSpacing:'0.04em',
-          }}>
-            ${product.price.toFixed(2)}
-          </span>
-          <div style={{display:'flex',gap:5}}>
-            {product.colors.map((c,i)=>(
-              <div key={i} style={{
-                width:9,height:9,borderRadius:'50%',
-                background:c,border:'0.5px solid rgba(15,26,20,0.12)',
-              }}/>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 type ShopifyNotice =
   | { type: 'empty'; message: string }
@@ -380,6 +126,12 @@ export default function HomePageClient({
   const [activeNiche,setActiveNiche]=useState('All')
   const [scrollY,setScrollY]=useState(0)
   const [visible,setVisible]=useState<Set<string>>(new Set())
+  const [activeProduct,setActiveProduct]=useState<DisplayProduct | null>(null)
+  const [showMobileBar,setShowMobileBar]=useState(false)
+
+  const filtered=activeNiche==='All'
+    ? products
+    : products.filter(p=>p.niche===activeNiche)
 
   useEffect(()=>{
     const fn=()=>setScrollY(window.scrollY)
@@ -397,6 +149,58 @@ export default function HomePageClient({
     return ()=>obs.disconnect()
   },[])
 
+  useEffect(() => {
+    if (filtered.length > 0 && !activeProduct) {
+      setActiveProduct(filtered[0])
+    }
+  }, [filtered, activeProduct])
+
+  useEffect(() => {
+    const collectionEl = document.getElementById('collection')
+    if (!collectionEl) return
+
+    const productMap = new Map(filtered.map((p) => [p.id, p]))
+
+    const collectionObs = new IntersectionObserver(
+      ([entry]) => {
+        setShowMobileBar(entry.isIntersecting && window.scrollY > 300)
+      },
+      { threshold: 0.08 }
+    )
+    collectionObs.observe(collectionEl)
+
+    const cardObs = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)
+        if (visible[0]) {
+          const id = (visible[0].target as HTMLElement).dataset.productCard
+          if (id && productMap.has(id)) {
+            setActiveProduct(productMap.get(id)!)
+          }
+        }
+      },
+      { threshold: [0.2, 0.45, 0.7], rootMargin: '-15% 0px -25% 0px' }
+    )
+
+    const cards = document.querySelectorAll('[data-product-card]')
+    cards.forEach((el) => cardObs.observe(el))
+
+    const onScroll = () => {
+      const rect = collectionEl.getBoundingClientRect()
+      setShowMobileBar(rect.top < window.innerHeight * 0.6 && rect.bottom > 120)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    onScroll()
+
+    return () => {
+      collectionObs.disconnect()
+      cardObs.disconnect()
+      window.removeEventListener('scroll', onScroll)
+    }
+  }, [filtered])
+
   type AnimProps = HTMLAttributes<HTMLElement> & {
     style: CSSProperties
     'data-anim': string
@@ -410,10 +214,6 @@ export default function HomePageClient({
     }
   })
 
-  const filtered=activeNiche==='All'
-    ? products
-    : products.filter(p=>p.niche===activeNiche)
-
   return (
     <main style={{background:'var(--off-white)',minHeight:'100vh',overflowX:'hidden'}}>
 
@@ -423,7 +223,7 @@ export default function HomePageClient({
         display:'grid',
         gridTemplateColumns:'1fr 1fr',
         alignItems:'center',
-        padding:'90px 48px 60px',
+        padding:'104px 48px 60px',
         background:'linear-gradient(140deg,#F2F7F4 0%,#E0EDE5 55%,#F2F7F4 100%)',
         gap:48,position:'relative',
       }}>
@@ -556,7 +356,7 @@ export default function HomePageClient({
       <div style={{
         background:'#FAFCFB',
         borderBottom:'0.5px solid rgba(74,144,99,0.18)',
-        position:'sticky',top:64,zIndex:50,
+        position:'sticky',top:94,zIndex:50,
         overflowX:'auto',WebkitOverflowScrolling:'touch',
       }}>
         <div style={{
@@ -580,7 +380,7 @@ export default function HomePageClient({
 
       {/* ── PRODUCT GRID ──────────────────────────── */}
       <section id="collection" style={{
-        padding:'64px 28px',
+        padding:'64px 28px 100px',
         maxWidth:1340,margin:'0 auto',
       }}>
         {shopifyNotice && (
@@ -638,7 +438,7 @@ export default function HomePageClient({
               opacity:0,
               animation:`fadeUp .7s ease ${i*.09}s forwards`,
             }}>
-              <ProductCard product={p} />
+              <PremiumProductCard product={p} />
             </div>
           ))}
         </div>
@@ -827,6 +627,11 @@ export default function HomePageClient({
           </p>
         </div>
       </footer>
+
+      <MobileProductStickyBar
+        product={activeProduct}
+        visible={showMobileBar}
+      />
 
       <style>{`
         @keyframes mq { from{transform:translateX(0)} to{transform:translateX(-25%)} }

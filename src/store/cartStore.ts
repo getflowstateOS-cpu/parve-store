@@ -27,6 +27,7 @@ interface CartStore {
   closeCart: () => void;
   setCartId: (id: string) => void;
   setCheckoutUrl: (url: string) => void;
+  buyNowWithShopify: (item: CartItem) => Promise<void>;
   total: () => number;
   count: () => number;
 }
@@ -111,6 +112,25 @@ export const useCartStore = create<CartStore>()(
       closeCart: () => set({ isOpen: false }),
       setCartId: (id) => set({ cartId: id }),
       setCheckoutUrl: (url) => set({ checkoutUrl: url }),
+
+      buyNowWithShopify: async (item) => {
+        const isShopifyVariant = item.variantId.startsWith("gid://shopify");
+
+        if (!isShopifyVariant) {
+          get().addItem(item);
+          set({ isOpen: true });
+          return;
+        }
+
+        try {
+          const cart = await createCart(item.variantId, item.quantity);
+          if (cart?.checkoutUrl) {
+            window.location.href = cart.checkoutUrl;
+          }
+        } catch (error) {
+          console.error("Shopify buy now failed:", error);
+        }
+      },
 
       total: () =>
         get().items.reduce((s, i) => s + i.price * i.quantity, 0),

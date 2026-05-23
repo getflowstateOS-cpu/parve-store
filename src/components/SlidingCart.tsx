@@ -340,7 +340,7 @@ export default function SlidingCart() {
                 (e.currentTarget.style.background = "#1A1A1A")
               }
             >
-              Proceed to Checkout
+              Checkout
             </a>
           </div>
         )}

@@ -1,4 +1,4 @@
-import { DEMO_PRODUCTS, type DisplayProduct } from "@/lib/displayProducts";
+import { DEMO_PRODUCTS, resolveProductBadge, type DisplayProduct } from "@/lib/displayProducts";
 import HomePageClient from "@/components/HomePageClient";
 
 export const dynamic = "force-dynamic";
@@ -110,7 +110,7 @@ async function getShopifyProducts(): Promise<DisplayProduct[]> {
           e.node.tags.find((t) =>
             ["silk", "linen", "satin", "chiffon", "structured"].includes(t)
           ) ?? "silk",
-        tag: e.node.tags[0] ?? "New Arrival",
+        tag: resolveProductBadge(e.node.tags[0] ?? "New Arrival"),
         imageUrl: e.node.images?.edges?.[0]?.node?.url ?? null,
         variantId: e.node.variants?.edges?.[0]?.node?.id ?? null,
         colors: ["#F5F0E8", "#E8DDD0", "#C8B8A0"],

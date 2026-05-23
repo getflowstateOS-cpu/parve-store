@@ -3,6 +3,7 @@ import { Cormorant_Garamond, Jost } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import SlidingCart from "@/components/SlidingCart";
+import TopMarquee from "@/components/TopMarquee";
 import CustomCursor from "@/components/CustomCursor";
 
 const cormorant = Cormorant_Garamond({
@@ -33,6 +34,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${cormorant.variable} ${jost.variable}`}>
         <CustomCursor />
+        <TopMarquee />
         <Navbar />
         <SlidingCart />
         {children}
